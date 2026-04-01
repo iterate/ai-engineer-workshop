@@ -11,6 +11,6 @@
   "license": "ISC",
   "packageManager": "pnpm@10.30.1",
   "dependencies": {
-    "ai-engineer-workshop": "https://pkg.pr.new/iterate/iterate/ai-engineer-workshop@a733da5a614f11ac54109bf98941c4383a783ff7"
+    "ai-engineer-workshop": "https://pkg.pr.new/iterate/iterate/ai-engineer-workshop@29572fe1e05dc2989a997953f92f371c954ec665"
   }
 }

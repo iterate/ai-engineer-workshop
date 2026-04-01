@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
+    "workshop": "workshop",
     "w": "pnpm workshop"
   },
   "keywords": [],
@@ -11,6 +13,16 @@
   "license": "ISC",
   "packageManager": "pnpm@10.30.1",
   "dependencies": {
-    "ai-engineer-workshop": "https://pkg.pr.new/iterate/iterate/ai-engineer-workshop@29572fe1e05dc2989a997953f92f371c954ec665"
+    "@mariozechner/pi-agent-core": "^0.64.0",
+    "@mariozechner/pi-ai": "^0.64.0",
+    "@tanstack/ai": "^0.9.2",
+    "@tanstack/ai-openai": "^0.7.2",
+    "ai-engineer-workshop": "https://pkg.pr.new/iterate/iterate/ai-engineer-workshop@430fe589",
+    "openai": "^6.33.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
   }
 }

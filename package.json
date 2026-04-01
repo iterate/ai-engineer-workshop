@@ -1,0 +1,16 @@
+{
+  "name": "ai-engineer-workshop",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "w": "pnpm workshop"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.30.1",
+  "dependencies": {
+    "ai-engineer-workshop": "https://pkg.pr.new/iterate/iterate/ai-engineer-workshop@a733da5a614f11ac54109bf98941c4383a783ff7"
+  }
+}

@@ -26,25 +26,19 @@ export default async function subscribeHelloWorld(pathPrefix: string) {
   const iterator = stream[Symbol.asyncIterator]();
 
   const appendResult = await client.append({
-    path: streamPath,
-    events: [
-      {
-        path: streamPath,
-        type: "hello-world",
-        payload: {
-          message: `hello world ${new Date().toISOString()}`,
-        },
+    params: { path: streamPath },
+    body: {
+      type: "hello-world",
+      payload: {
+        message: `hello world ${new Date().toISOString()}`,
       },
-    ],
+    },
   });
 
   console.log("append result");
   console.log(JSON.stringify(appendResult, null, 2));
 
-  const appendedEvent = appendResult.events[0];
-  if (!appendedEvent) {
-    throw new Error("append returned no events");
-  }
+  const appendedEvent = appendResult.event;
 
   let streamed = await iterator.next();
   while (!streamed.done && streamed.value.offset !== appendedEvent.offset) {

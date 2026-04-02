@@ -10,15 +10,25 @@
  */
 import { randomBytes } from "node:crypto";
 import OpenAI from "openai";
-import type { ResponseInput, ResponseStreamEvent } from "openai/resources/responses/responses";
+import type {
+  EasyInputMessage,
+  ResponseInput,
+  ResponseOutputItemDoneEvent,
+  ResponseOutputMessage,
+  ResponseStreamEvent,
+} from "openai/resources/responses/responses";
 import {
   createEventsClient,
   defineProcessor,
   type JSONObject,
   PullSubscriptionProcessorRuntime,
 } from "ai-engineer-workshop";
+import { z } from "zod";
 
 const MODEL = "gpt-4o-mini";
+const UserMessagePayload = z.object({
+  content: z.string().min(1),
+});
 
 type AgentState = {
   history: ResponseInput;
@@ -35,9 +45,14 @@ const agentProcessor = defineProcessor<AgentState>({
 
   reduce: (state, event) => {
     if (event.type === "user-message") {
+      const payload = UserMessagePayload.safeParse(event.payload);
+      if (!payload.success) {
+        return state;
+      }
+
       const history: ResponseInput = [
         ...state.history,
-        { role: "user" as const, content: event.payload.content as string },
+        { role: "user", content: payload.data.content },
       ];
       return { history, requestInProgress: true };
     }
@@ -46,8 +61,13 @@ const agentProcessor = defineProcessor<AgentState>({
       const streamEvent = event.payload as unknown as ResponseStreamEvent;
 
       if (streamEvent.type === "response.output_item.done") {
-        const history: ResponseInput = [...state.history, streamEvent.item];
-        return { history, requestInProgress: true };
+        const assistantMessage = toAssistantInputMessage(streamEvent.item);
+        if (!assistantMessage) {
+          return state;
+        }
+
+        const history: ResponseInput = [...state.history, assistantMessage];
+        return { history, requestInProgress: false };
       }
 
       if (streamEvent.type === "response.completed") {
@@ -58,6 +78,11 @@ const agentProcessor = defineProcessor<AgentState>({
 
   onEvent: async ({ append, event, state, prevState }) => {
     if (event.type !== "user-message" || prevState.requestInProgress) {
+      return;
+    }
+
+    const payload = UserMessagePayload.safeParse(event.payload);
+    if (!payload.success) {
       return;
     }
 
@@ -113,4 +138,30 @@ function toJsonObject(value: unknown): JSONObject {
     throw new Error("Expected a JSON object payload");
   }
   return json as JSONObject;
+}
+
+function toAssistantInputMessage(
+  item: ResponseOutputItemDoneEvent["item"],
+): EasyInputMessage | null {
+  if (item.type !== "message") {
+    return null;
+  }
+
+  const content = item.content.reduce((text, part) => {
+    if (part.type !== "output_text") {
+      return text;
+    }
+    return text + part.text;
+  }, "");
+
+  if (!content) {
+    return null;
+  }
+
+  return {
+    type: "message",
+    role: "assistant",
+    content,
+    phase: item.phase ?? null,
+  };
 }

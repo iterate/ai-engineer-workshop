@@ -82,15 +82,13 @@ const agentProcessor = defineProcessor<AgentState>({
       messages: state.conversationHistory,
     });
 
-    // Each "content" chunk carries the full accumulated text so far (not just
-    // the delta), so the last content chunk contains the complete response.
     let assistantContent = "";
 
     for await (const chunk of chunkStream) {
       await append({ type: "tanstack-ai-chunk-added", payload: toJsonObject(chunk) });
 
-      if (chunk.type === "content") {
-        assistantContent = chunk.content;
+      if (chunk.type === "TEXT_MESSAGE_CONTENT") {
+        assistantContent += chunk.delta;
       }
     }
 

@@ -66,14 +66,11 @@ export default async function runLlmSubscriber(pathPrefix: string) {
       chunks.push(chunk);
 
       await client.append({
-        path: streamPath,
-        events: [
-          {
-            path: streamPath,
-            type: OUTPUT_ITEM_ADDED_TYPE,
-            payload: JSON.parse(JSON.stringify({ chunk })),
-          },
-        ],
+        params: { path: streamPath },
+        body: {
+          type: OUTPUT_ITEM_ADDED_TYPE,
+          payload: JSON.parse(JSON.stringify({ chunk })),
+        },
       });
     }
 
@@ -81,14 +78,11 @@ export default async function runLlmSubscriber(pathPrefix: string) {
     if (assistant) {
       const assistantItem: ModelMessage<string> = { role: "assistant", content: assistant };
       await client.append({
-        path: streamPath,
-        events: [
-          {
-            path: streamPath,
-            type: INPUT_ITEM_ADDED_TYPE,
-            payload: JSON.parse(JSON.stringify({ item: assistantItem })),
-          },
-        ],
+        params: { path: streamPath },
+        body: {
+          type: INPUT_ITEM_ADDED_TYPE,
+          payload: JSON.parse(JSON.stringify({ item: assistantItem })),
+        },
       });
       messages.push(assistantItem);
     }
@@ -153,13 +147,13 @@ async function loadConversation({
   streamPath: string;
 }) {
   const messageEvents: Array<{
-    eventOffset: string;
-    offsetBeforeInput?: string;
+    eventOffset: number;
+    offsetBeforeInput?: number;
     item: ModelMessage<string>;
   }> = [];
   const pendingUserMessageEvents: Array<(typeof messageEvents)[number]> = [];
-  let lastOffset: string | undefined;
-  let previousOffset: string | undefined;
+  let lastOffset: number | undefined;
+  let previousOffset: number | undefined;
 
   for await (const event of await client.stream({ path: streamPath }, {})) {
     lastOffset = event.offset;
@@ -208,7 +202,7 @@ async function streamChunksToText(chunks: readonly StreamChunk[]) {
 }
 
 function streamChunksComplete(chunks: readonly StreamChunk[]) {
-  return chunks.some((chunk) => chunk.type === "done");
+  return chunks.some((chunk) => chunk.type === "RUN_FINISHED");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

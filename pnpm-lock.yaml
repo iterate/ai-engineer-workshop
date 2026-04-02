@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  ai-engineer-workshop: link:../../../../.superset/worktrees/iterate/ai-engineer-workshop-main/ai-engineer-workshop/lib
+  ai-engineer-workshop: link:../../../../.superset/worktrees/iterate/excited-cemetery/ai-engineer-workshop
 
 importers:
 
@@ -24,8 +24,8 @@ importers:
         specifier: ^0.7.2
         version: 0.7.2(@tanstack/ai-client@0.7.6)(@tanstack/ai@0.9.2)(ws@8.20.0)(zod@4.3.6)
       ai-engineer-workshop:
-        specifier: link:../../../../.superset/worktrees/iterate/ai-engineer-workshop-main/ai-engineer-workshop/lib
-        version: link:../../../../.superset/worktrees/iterate/ai-engineer-workshop-main/ai-engineer-workshop/lib
+        specifier: link:../../../../.superset/worktrees/iterate/excited-cemetery/ai-engineer-workshop
+        version: link:../../../../.superset/worktrees/iterate/excited-cemetery/ai-engineer-workshop
       openai:
         specifier: ^6.33.0
         version: 6.33.0(ws@8.20.0)(zod@4.3.6)

@@ -15,10 +15,13 @@ export default async function appendHelloWorld(pathPrefix: string) {
 
   const result = await client.append({
     path: streamPath,
-    event: {
-      type: "hello-world",
-      payload: { message: "hello world" },
-    },
+    events: [
+      {
+        path: streamPath,
+        type: "hello-world",
+        payload: { message: "hello world" },
+      },
+    ],
   });
 
   console.log(JSON.stringify(result, null, 2));

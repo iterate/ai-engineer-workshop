@@ -1,7 +1,0 @@
-{
-  "setup": [
-    "pnpm i\ndoppler setup --project ai-engineer-workshop --config dev_jona"
-  ],
-  "teardown": [],
-  "run": []
-}

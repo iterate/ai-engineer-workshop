@@ -8,7 +8,12 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "ai-engineer-workshop": "https://pkg.pr.new/iterate/iterate/ai-engineer-workshop@main"
+    "ai-engineer-workshop": "https://pkg.pr.new/iterate/iterate/ai-engineer-workshop@main",
+    "dedent": "^1.7.0",
+    "just-bash": "^2.14.0",
+    "openai": "^6.33.0",
+    "schematch": "0.2.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",

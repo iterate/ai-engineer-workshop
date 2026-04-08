@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["00-example.ts"]
+  "include": ["00-example.ts", "examples/**/*.ts"]
 }

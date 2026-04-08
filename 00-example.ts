@@ -8,7 +8,7 @@ import {
 const baseUrl = process.env.BASE_URL || "https://events.iterate.com";
 const pathPrefix = normalizePathPrefix(process.env.PATH_PREFIX || getDefaultWorkshopPathPrefix());
 const streamPath = process.env.STREAM_PATH || `${pathPrefix}/00-hello-world`;
-const client = createEventsClient(baseUrl);
+const client = createEventsClient({ baseUrl });
 
 console.log(`Watching ${streamPath}`);
 console.log(`Append {"type":"ping"} to trigger a pong.`);
@@ -23,8 +23,5 @@ for await (const event of await client.stream({ path: streamPath, live: true }, 
 }
 
 async function appendEvent(path: string, body: EventInput) {
-  await client.append({
-    params: { path },
-    body,
-  } as any);
+  await client.append({ path, event: body });
 }

@@ -110,7 +110,7 @@ Use the slightly higher level `defineProcessor` to create a stream processor wit
 - `reduce` function
 - `afterAppend` function for side effects
 
-Then use `
+Then use `PullProcessorRuntime` to run the processor locally.
 
 ```ts
 import { defineProcessor, PullProcessorRuntime } from "ai-engineer-workshop";
@@ -135,4 +135,16 @@ if (import.meta.main) {
     processor,
   }).run();
 }
+```
 
+# Deploy a processor by appending it to a stream
+
+This is highly experimental, but gives you a glimpse of where this might go:
+
+```bash
+pnpm ai-engineer-workshop deploy --stream-path /your/stream --file ./your-processor.ts
+```
+
+You just need to make sure you export the processor from the file you pass to `--file`.
+
+This bundles the processor and all dependencies into an event and appends it to the stream. `events.iterate.com` then runs that processor for you. 

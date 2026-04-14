@@ -26,7 +26,7 @@ export const processor = defineProcessor(() => {
           if (payload.role !== "assistant") return;
 
           // parse ```bash out of payload.content
-          const script = payload.content.match(/```bash\n(.*)\n```/s)?.[1];
+          const script = payload.content.match(/```bash\n(.*?)\n```/s)?.[1];
           if (!script) return;
           await append({
             event: {

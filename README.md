@@ -148,3 +148,19 @@ pnpm ai-engineer-workshop deploy --stream-path /your/stream --file ./your-proces
 You just need to make sure you export the processor from the file you pass to `--file`.
 
 This bundles the processor and all dependencies into an event and appends it to the stream. `events.iterate.com` then runs that processor for you. 
+
+# Processors you can easily build now
+
+It's all just processors!
+
+- Add events for model and system prompt setting
+- Debounce inputs so repeated inputs don't interrupt the LLM over and over
+- Collect prompt context from "context providers" (e.g. RAG from knowledge bases) for some period of time before making each LLM request
+- Image / attachment event types
+- Opencode / pi bridge - we could have a processor that sits between an opencode agent and e.g. a pi or opencode session - so we could speak to all these agent harnesses using a single input interface
+- Different compaction strategies
+- Multi LLM agent (via tanstack AI or vercel AI sdk for example)
+- Allow agents to have multple multiple LLM requests in flight at the same time
+  - ... for safety - run a prompt injection protector in parallel
+  - ... or to allow "sidebar" conversations
+- Proper codemode - add new tools via events!

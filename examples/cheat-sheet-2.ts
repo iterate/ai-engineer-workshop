@@ -21,7 +21,7 @@ export const processor = defineProcessor(() => {
   return {
     slug: "bashmode",
     afterAppend: async ({ append, event, state, logger }) => {
-      match(event)
+      await match(event)
         .case(AgentInputEvent, async ({ payload }) => {
           if (payload.role !== "assistant") return;
 

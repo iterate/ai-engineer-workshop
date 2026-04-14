@@ -10,7 +10,7 @@ import { defineProcessor } from "ai-engineer-workshop";
 export const processor = defineProcessor(() => ({
   slug: "ping-pong",
   afterAppend: async ({ append, event }) => {
-    if(!JSON.stringify(event.payload).includes("ping")) return;
+    if(!JSON.stringify([event.type, event.payload || {}]).includes("ping")) return;
     await append({ event: { type: "pong", payload: { sourceOffset: event.offset } } });
   },
 }));

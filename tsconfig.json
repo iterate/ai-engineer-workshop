@@ -1,12 +1,20 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM"],
+    "types": ["node"],
     "strict": true,
-    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["node"]
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": "..",
+    "outDir": "dist",
+    "skipLibCheck": true
   },
-  "include": ["00-example.ts", "examples/**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": ["dist"]
 }

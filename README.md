@@ -1,47 +1,91 @@
-# AI engineer workshop
+# What's the point of this?
 
-This directory is the publishable workshop package.
+I believe we haven't yet seen the final form of agent harnesses. So I want to make it easier to hack on them.
 
-It intentionally does not contain the main workshop script collection anymore.
-The real scripts live in the separate workshop repo, while this package keeps a
-few tiny local examples and a scratch `script.ts` for experimentation.
+This workshop and repo is a playground for trying out some (possibly dumb) ideas:
 
-- `sdk.ts` re-exports the shared runtime/client SDK from `apps/events-contract/src/sdk.ts`
-- `sdk.ts` also exports lightweight network test helpers for workshop e2e tests
-- `contract.ts` re-exports the shared contract from `apps/events-contract/src/index.ts`
-- `cli.ts` runs workshop scripts from the current working directory
-- `examples/` contains a few tiny runnable scripts for local messing around inside this repo
+1. Agent harnesses can (should?) be implemented using nothing but `append()` and `stream()` operations on an immutable append only durable stream
+2. Harness plugins can (should?) be implemented using nothing but `append()` and `stream()` operations on an immutable append only durable stream
+3. All agents should have a URL that I can post to
+4. The agent harness itself can (should?) be a distributed system of small networked programs
+5. All state in the system should be event sourced / derived from the immutable append only durable stream
 
-Local development:
+Agents written in this way have a lot of benefits:
+- Easy to debug (everything is an event)
+- Hacking on the harness core is no different from hacking on a plugin/extension (everything is just a stream reducer)
+- Stteam reducers compose very nicely and naturally
+- You can just post webhooks from third parties directly to them
+- Different agent harnesses can interoperate (provided they share a few event schemas)
+
+But this is also a terrible idea because:
+- Infinite loops - you can easily get two stream processors pooping events back and forth forever
+- Need to think hard about authz
+- You get A LOT of events very quickly
+
+Though my feeling is that you have to deal with these downsides in more hidden forms in any agent harness, so maybe it's best to tackle head-on.
+
+# How to play with this 
+
+We've deployed a very simple durable streams server at https://events.iterate.com with `append()` and `stream()` operations. The API is inspired by [durable-streams](https://github.com/durable-streams/durable-streams) but not 100% the same.
+
+Streams are organised into a hierarchy of stream paths, starting with `/` . So `/jonas` and `/jonas/hi` etc are all stream paths
+
+Events in a stream have this shape 
+
+```ts
+type Event = {
+  type: string;
+  payload?: Record<string, any>;
+
+  idempotencyKey?: string;
+  metadata?: Record<string, any>;
+
+  // Server assigned
+  streamPath: string;
+  offset: number;
+  createdAt: string;
+}
+```
+
+The only supported operations are:
+
+1. `append({ path, event })` - append an event to a stream
+2. `stream({ path, beforeOffset?, afterOffset? })` - stream events from stream
+
+There's a UI at https://events.iterate.com that you can use 
+
+WARNING: Streams on events.iterate.com are currently entirely public and regularly deleted!
+
+Here's how you can use it
 
 ```bash
-cd ai-engineer-workshop
-pnpm install
-pnpm w --help
-pnpm build
-pnpm test:e2e
+export PATH_PREFIX="/$(id -un)"
+export BASE_URL="https://events.iterate.com"
+export STREAM_PATH="${PATH_PREFIX}/hello-world"
+curl -sN "${BASE_URL}/api/streams${STREAM_PATH}?beforeOffset=end"
+
+# Let's create our first event
+curl --json '{"type": "hello-world"}' \
+  "${BASE_URL}/api/streams${STREAM_PATH}"
+
+# Let's see if it's there
+curl -N "${BASE_URL}/api/streams${STREAM_PATH}"
+
+# We can also live tail the stream
+# With pretty printing
+curl -sN "${BASE_URL}/api/streams${STREAM_PATH}?beforeOffset=end"
+
 ```
 
-If you want to experiment from inside this repo, put scripts in:
+### Typescript SDK
 
-- `ai-engineer-workshop/script.ts` for a single scratch file
-- `ai-engineer-workshop/examples/...` for a few longer-lived examples
-
-Those example files can import exactly the same way as the separate workshop repo:
+Use `createEventsClient` to interact with events.iterate.com. The principal operations are `append` and `stream`.
 
 ```ts
-import { createEventsClient, normalizePathPrefix, runWorkshopMain } from "ai-engineer-workshop";
-```
+import { createEventsClient } from "ai-engineer-workshop";
 
-For networked tests, the SDK also exports helpers that default to:
+const client = createEventsClient();
 
-- `BASE_URL=https://events.iterate.com`
-- `PROJECT_SLUG=public`
-
-`createEventsClient()` now returns the raw oRPC client, so append calls use the
-contract shape directly:
-
-```ts
 await client.append({
   path: streamPath,
   event: {
@@ -49,12 +93,29 @@ await client.append({
     payload: { message: "hello world" },
   },
 });
+
+const stream = await client.stream({
+  path: streamPath
+});
+
+for await (const event of stream) {
+  console.log(event);
+}
+
 ```
 
-Processors use the shared `defineProcessor()` helper from `apps/events-contract/src/sdk.ts`:
+Use the slightly higher level `defineProcessor` to create a stream processor with well defined 
+
+- `state` shape
+- `reduce` function
+- `afterAppend` function for side effects
+
+Then use `
 
 ```ts
-const processor = defineProcessor(() => ({
+import { defineProcessor, PullProcessorRuntime } from "ai-engineer-workshop";
+
+export const processor = defineProcessor(() => ({
   slug: "hello-world",
   initialState: { seen: 0 },
   reduce: ({ event, state }) => (event.type === "hello-world" ? { seen: state.seen + 1 } : state),
@@ -65,77 +126,13 @@ const processor = defineProcessor(() => ({
     });
   },
 }));
-```
 
-Processor `append()` now always takes an options object:
+if (import.meta.main) {
+  await new PullProcessorRuntime({
+    path: "/path-prefix",
+    // Attach processor to all paths under /path-prefix
+    includeChildren: true,
+    processor,
+  }).run();
+}
 
-```ts
-await append({ event: { type: "pong", payload: {} } });
-await append({ path: "./child", event: { type: "child-ping", payload: {} } });
-await append({ path: "../", event: { type: "notify-parent", payload: {} } });
-```
-
-For multi-stream workers, `PullSubscriptionPatternProcessorRuntime` watches `/`
-for `child-stream-created` events, keeps discovery live, and spins up one
-processor runtime per matching stream path, e.g. `/team/*` or `/team/**/*`.
-
-That works because this directory is itself the `ai-engineer-workshop` package root, so package self-reference resolves correctly from files inside it.
-
-Examples are discoverable via:
-
-```bash
-cd ai-engineer-workshop
-pnpm w --help
-pnpm w run --script examples/01-hello-world/append-hello-world.ts
-pnpm w run --script examples/03-pattern-processor/prove-jonas-ping-pong.ts
-pnpm w run --script examples/04-llm-codemode/run-llm-codemode-loop.ts
-pnpm w run --script examples/05-slack-codemode/run-slack-codemode-loop.ts
-pnpm w run --script examples/06-slack-composition/run-slack-composition.ts
-pnpm w run --script examples/07-slack-tools/run-slack-tools.ts
-```
-
-The deployed processor example lives in:
-
-- `ai-engineer-workshop/examples/deployed-processor`
-
-Pattern-processor example:
-
-- [`examples/03-pattern-processor/jonas-ping-pong-processor.ts`](./examples/03-pattern-processor/jonas-ping-pong-processor.ts) watches `"/jonas/**/*"` and replies to every `ping` with a `pong`.
-- [`examples/03-pattern-processor/prove-jonas-ping-pong.ts`](./examples/03-pattern-processor/prove-jonas-ping-pong.ts) runs against a real local `apps/events` worker and asserts only matching `/jonas/...` streams get a derived `pong`.
-
-LLM + codemode example:
-
-- [`examples/04-llm-codemode/coding-agent-system-prompt.ts`](./examples/04-llm-codemode/coding-agent-system-prompt.ts) builds the coding-agent prompt. It tells the model its agent path, gives a tiny explanation of the events system, and includes concrete `fetch()` examples for reading streams, appending events, and sending `llm-input-added` to another agent.
-- [`examples/04-llm-codemode/agent.ts`](./examples/04-llm-codemode/agent.ts) runs an OpenAI Responses API loop from `llm-input-added`, streams every OpenAI event back into the stream, cancels and restarts on newer input, and emits `codemode-block-added` when the assistant output contains `ts` blocks. Completion is recorded with `llm-request-completed`.
-- [`examples/04-llm-codemode/agent-types.ts`](./examples/04-llm-codemode/agent-types.ts) holds the agent event contracts and the event-to-prompt mirroring helpers.
-- [`examples/04-llm-codemode/codemode.ts`](./examples/04-llm-codemode/codemode.ts) is completely independent from the agent loop and only knows how to execute `codemode-block-added`. It writes `.codemode/<block-count>/code.ts`, compiles that file with `tsc`, runs the emitted JS, then appends `codemode-result-added`.
-- [`examples/04-llm-codemode/codemode-types.ts`](./examples/04-llm-codemode/codemode-types.ts) holds the codemode event contracts.
-- [`examples/04-llm-codemode/run-llm-codemode-loop.ts`](./examples/04-llm-codemode/run-llm-codemode-loop.ts) starts both processors against the same stream.
-- [`e2e/vitest/codemode-agent.test.ts`](./e2e/vitest/codemode-agent.test.ts) is the proper Vitest network proof. It covers the cancel-and-restart loop and a second case where one agent sends `llm-input-added` to another agent over the events API.
-
-Slack codemode example:
-
-- [`examples/05-slack-codemode/agent.ts`](./examples/05-slack-codemode/agent.ts) is the Slack-focused variant. It still uses the same LLM loop shape, but it mirrors `invalid-event-appended` into YAML prompt input and runs plain `gpt-5.4` with reasoning enabled.
-- [`examples/05-slack-codemode/coding-agent-system-prompt.ts`](./examples/05-slack-codemode/coding-agent-system-prompt.ts) tells the model to respond to Slack by emitting one `ts` block that POSTs to `response_url`.
-- [`examples/05-slack-codemode/codemode.ts`](./examples/05-slack-codemode/codemode.ts) keeps the codemode runner independent and writes artifacts under `.codemode/<stream-path>/<block-count>/`.
-- [`examples/05-slack-codemode/run-slack-codemode-loop.ts`](./examples/05-slack-codemode/run-slack-codemode-loop.ts) starts the Slack variant and prints a raw webhook example you can POST straight into the stream.
-- [`e2e/vitest/slack-codemode-agent.test.ts`](./e2e/vitest/slack-codemode-agent.test.ts) proves the full flow against the deployed events service: raw Slack JSON becomes `invalid-event-appended`, the agent sees a YAML prompt, and two turns on the same stream produce a remembered Slack reply.
-
-Workshop kernel examples:
-
-- [`examples/06-slack-composition/slack-input.ts`](./examples/06-slack-composition/slack-input.ts), [`examples/06-slack-composition/agent.ts`](./examples/06-slack-composition/agent.ts), and [`examples/06-slack-composition/codemode.ts`](./examples/06-slack-composition/codemode.ts) are the small teaching version of the system: one processor normalizes raw Slack JSON, one turns stream events into LLM input and code blocks, and one runs those blocks.
-- [`e2e/vitest/slack-composition.test.ts`](./e2e/vitest/slack-composition.test.ts) proves the minimal chain: raw Slack webhook -> normalized event -> LLM input -> Slack reply.
-- [`examples/07-slack-tools/codemode.ts`](./examples/07-slack-tools/codemode.ts) is the follow-on example where blocks export `default async function(ctx)` and a new `codemode-tool-added` event can extend `ctx.*`.
-- [`examples/07-slack-tools/run-slack-tools.ts`](./examples/07-slack-tools/run-slack-tools.ts) registers a tiny `ctx.replyToSlack(...)` tool and also shows the real `@slack/web-api` package as the next step for `ctx.slackApi`.
-- [`e2e/vitest/slack-tools.test.ts`](./e2e/vitest/slack-tools.test.ts) proves both pieces separately: the tool works when called directly from codemode, and the agent can still keep context across two Slack turns on the same stream.
-
-Published preview packages are built directly from this folder via `pkg.pr.new`.
-
-The separate scripts repo lives at:
-
-a separate local checkout of `ai-engineer-workshop`
-
-That repo can either:
-
-- depend on a `pkg.pr.new` preview of this package
-- or override `ai-engineer-workshop` to a local link pointing at this folder during development

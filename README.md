@@ -4,25 +4,15 @@ I believe we haven't yet seen the final form of agent harnesses. So I want to ma
 
 This workshop and repo is a playground for trying out some (possibly dumb) ideas:
 
-1. Agent harnesses can (should?) be implemented using nothing but `append()` and `stream()` operations on an immutable append only durable stream
-2. Harness plugins can (should?) be implemented using nothing but `append()` and `stream()` operations on an immutable append only durable stream
-3. All agents should have a URL that I can post to
-4. The agent harness itself can (should?) be a distributed system of small networked programs
-5. All state in the system should be event sourced / derived from the immutable append only durable stream
+1. Agent harnesses should be implemented using nothing but these operations on an append only log of events:
+  -  `append({ path, event })` to add an event
+  -  `stream({ path, beforeOffset?, afterOffset? })` to read/consume stream
+2. Harness "plugins" should be the same thing
+3. Harness and plugins can run on different machines
+4. All agents should have a URL that I can post to
+5. All state in the system should be event-sourced
 
-Agents written in this way have a lot of benefits:
-- Easy to debug (everything is an event)
-- Hacking on the harness core is no different from hacking on a plugin/extension (everything is just a stream reducer)
-- Stteam reducers compose very nicely and naturally
-- You can just post webhooks from third parties directly to them
-- Different agent harnesses can interoperate (provided they share a few event schemas)
-
-But this is also a terrible idea because:
-- Infinite loops - you can easily get two stream processors pooping events back and forth forever
-- Need to think hard about authz
-- You get A LOT of events very quickly
-
-Though my feeling is that you have to deal with these downsides in more hidden forms in any agent harness, so maybe it's best to tackle head-on.
+To prove this, we'll write an "agent harness" from scratch!
 
 # How to play with this 
 
